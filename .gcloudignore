@@ -1,0 +1,15 @@
+# Cloud Build / gcloud upload icin
+.git
+.venv
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+**/.next
+*.db
+.env
+.env.*
+!.env.example
+infrastructure/gcp/env.gcp
+*firebase-adminsdk*.json
+.run
+terminals

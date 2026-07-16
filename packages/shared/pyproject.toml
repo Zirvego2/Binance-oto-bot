@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trading-bot-shared"
+version = "0.1.0"
+description = "Binance USDS-M Futures bot icin ortak Decimal/finansal hesaplama, enum ve filtre mantigi"
+requires-python = ">=3.11"
+dependencies = [
+    "SQLAlchemy>=2.0.36",
+    "httpx>=0.27",
+]
+
+[tool.setuptools.packages.find]
+include = ["shared*"]

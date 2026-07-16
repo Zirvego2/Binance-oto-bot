@@ -1,0 +1,90 @@
+# Tek Cloud Run servisi: API + Worker + Web + Nginx
+# Build (repo kokunden):
+#   docker build -f infrastructure/gcp/Dockerfile.all-in-one -t bcai-all-in-one .
+
+# --- Web build ---
+FROM node:20-alpine AS web-builder
+WORKDIR /app
+COPY apps/web/package.json apps/web/package-lock.json* ./
+RUN npm ci
+COPY apps/web ./
+
+ARG NEXT_PUBLIC_API_BASE_URL=/api/v1
+ARG NEXT_PUBLIC_WS_BASE_URL=/api/v1
+ARG NEXT_PUBLIC_SESSION_COOKIE_NAME=trading_bot_session
+ARG NEXT_PUBLIC_FIREBASE_API_KEY=
+ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+ARG NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+ARG NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+ARG NEXT_PUBLIC_FIREBASE_APP_ID=
+
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
+    NEXT_PUBLIC_WS_BASE_URL=$NEXT_PUBLIC_WS_BASE_URL \
+    NEXT_PUBLIC_SESSION_COOKIE_NAME=$NEXT_PUBLIC_SESSION_COOKIE_NAME \
+    NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY \
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN \
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID \
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET \
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID \
+    NEXT_PUBLIC_FIREBASE_APP_ID=$NEXT_PUBLIC_FIREBASE_APP_ID \
+    API_PROXY_TARGET=http://127.0.0.1:8000
+
+RUN npm run build
+
+# --- Python deps ---
+FROM python:3.12-slim AS py-base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential libpq-dev curl nginx gettext-base \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY packages/shared /app/packages/shared
+COPY services/api/requirements.txt /app/services/api/requirements.txt
+COPY services/worker/requirements.txt /app/services/worker/requirements.txt
+
+RUN pip install --upgrade pip \
+    && pip install -e /app/packages/shared \
+    && grep -v "^-e" /app/services/api/requirements.txt | pip install -r /dev/stdin \
+    && grep -v "^-e" /app/services/worker/requirements.txt | pip install -r /dev/stdin
+
+COPY services/api /app/services/api
+COPY services/worker /app/services/worker
+
+ENV PYTHONPATH=/app/services/worker:/app/services/api
+
+# --- Final ---
+FROM py-base AS runner
+
+# Node.js (Next.js standalone)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=web-builder /app/.next/standalone /app/web
+COPY --from=web-builder /app/.next/static /app/web/.next/static
+COPY --from=web-builder /app/public /app/web/public
+
+COPY infrastructure/gcp/nginx.cloudrun.conf /etc/nginx/nginx.template.conf
+COPY infrastructure/gcp/start-all-in-one.sh /usr/local/bin/start-all-in-one.sh
+RUN sed -i 's/\r$//' /usr/local/bin/start-all-in-one.sh \
+    && chmod +x /usr/local/bin/start-all-in-one.sh \
+    && mkdir -p /tmp/nginx /var/log/nginx
+
+ENV PORT=8080 \
+    SKIP_PROCESS_LOCK=true \
+    ALL_IN_ONE=true \
+    NODE_ENV=production
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+    CMD curl -f "http://127.0.0.1:8080/api/v1/health" || exit 1
+
+CMD ["/usr/local/bin/start-all-in-one.sh"]

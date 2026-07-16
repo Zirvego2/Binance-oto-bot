@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Tum yazma/okuma yalnizca backend (Firebase Admin SDK) uzerinden.
+    // Panel istemcisi dogrudan Firestore erisemez.
+
+    match /customers/{firebaseUid} {
+      allow read, write: if false;
+    }
+
+    match /tenantIndex/{adminId} {
+      allow read, write: if false;
+    }
+
+    match /tenants/{adminId}/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /platform/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

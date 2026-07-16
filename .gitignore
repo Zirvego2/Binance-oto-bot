@@ -1,0 +1,60 @@
+# Env & secrets
+.env
+.env.*
+!.env.example
+infrastructure/gcp/env.gcp
+*.pem
+*.key
+*firebase-adminsdk*.json
+firebase-service-account.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node / Next.js
+node_modules/
+apps/web/.next/
+apps/web/out/
+apps/web/next-env.d.ts
+.npm/
+.pnpm-store/
+npm-debug.log*
+
+# Build artifacts
+dist/
+build/
+
+# Docker
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# Alembic local
+services/api/alembic.ini.local
+
+# Process lock PID dosyalari
+.run/
