@@ -873,22 +873,26 @@ async def open_position_for_signal(
     from .tenant_ops import send_position_opened_notification
 
     worker_settings = get_worker_settings()
-    await send_position_opened_notification(
-        session,
-        worker_settings,
-        settings_row.admin_id,
-        symbol=symbol_row.symbol,
-        side=side,
-        entry_price=entry_price,
-        quantity=filled_qty,
-        margin_usdt=settings_row.margin_per_trade_usdt,
-        leverage=leverage,
-        stop_loss_price=stop_loss_price,
-        take_profit_price=take_profit_price,
-        bot_mode=settings_row.mode,
-        open_reason=open_reason,
-        position_id=position.id,
-    )
+    try:
+        await send_position_opened_notification(
+            session,
+            worker_settings,
+            settings_row.admin_id,
+            symbol=symbol_row.symbol,
+            side=side,
+            entry_price=entry_price,
+            quantity=filled_qty,
+            margin_usdt=settings_row.margin_per_trade_usdt,
+            leverage=leverage,
+            stop_loss_price=stop_loss_price,
+            take_profit_price=take_profit_price,
+            bot_mode=settings_row.mode,
+            open_reason=open_reason,
+            position_id=position.id,
+        )
+        await session.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Telegram acilis bildirimi gonderilemedi (%s): %s", symbol_row.symbol, exc)
 
     try:
         try:
@@ -1249,22 +1253,26 @@ async def _complete_limit_entry_fill(
     from .tenant_ops import send_position_opened_notification
 
     worker_settings = get_worker_settings()
-    await send_position_opened_notification(
-        session,
-        worker_settings,
-        settings_row.admin_id,
-        symbol=symbol_row.symbol,
-        side=side,
-        entry_price=entry_price,
-        quantity=filled_qty,
-        margin_usdt=settings_row.margin_per_trade_usdt,
-        leverage=leverage,
-        stop_loss_price=stop_loss_price,
-        take_profit_price=take_profit_price,
-        bot_mode=settings_row.mode,
-        open_reason=open_reason or "OLTA_LIMIT",
-        position_id=position.id,
-    )
+    try:
+        await send_position_opened_notification(
+            session,
+            worker_settings,
+            settings_row.admin_id,
+            symbol=symbol_row.symbol,
+            side=side,
+            entry_price=entry_price,
+            quantity=filled_qty,
+            margin_usdt=settings_row.margin_per_trade_usdt,
+            leverage=leverage,
+            stop_loss_price=stop_loss_price,
+            take_profit_price=take_profit_price,
+            bot_mode=settings_row.mode,
+            open_reason=open_reason or "OLTA_LIMIT",
+            position_id=position.id,
+        )
+        await session.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Telegram acilis bildirimi gonderilemedi (%s): %s", symbol_row.symbol, exc)
 
     try:
         try:

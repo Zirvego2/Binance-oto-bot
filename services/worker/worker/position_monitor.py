@@ -447,6 +447,7 @@ async def _send_close_telegram(
             closed_at=closed_at,
             position_id=position.id,
         )
+        await session.commit()
     except Exception as exc:  # noqa: BLE001
         logger.warning("Telegram kapanis bildirimi gonderilemedi: %s", exc)
 
