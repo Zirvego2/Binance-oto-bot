@@ -29,7 +29,7 @@ def test_duplicate_by_position_id():
     )
 
 
-def test_not_duplicate_different_position_same_symbol():
+def test_not_duplicate_different_position_same_symbol_with_position_id():
     recent = [_log("position_closed", "BTCUSDT", position_id="pos-1")]
     assert not _is_duplicate_delivery(
         recent,

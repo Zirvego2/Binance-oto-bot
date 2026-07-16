@@ -54,14 +54,17 @@ def _is_duplicate_delivery(
         return False
 
     position_id = str((details or {}).get("position_id") or "").strip()
+    if position_id:
+        for entry in recent_logs:
+            if entry.message_type != message_type:
+                continue
+            entry_position_id = str((entry.details or {}).get("position_id") or "").strip()
+            if entry_position_id and entry_position_id == position_id:
+                return True
+        return False
+
     for entry in recent_logs:
         if entry.message_type != message_type:
-            continue
-        entry_details = entry.details or {}
-        entry_position_id = str(entry_details.get("position_id") or "").strip()
-        if position_id and entry_position_id:
-            if position_id == entry_position_id:
-                return True
             continue
         if symbol and entry.symbol == symbol:
             return True

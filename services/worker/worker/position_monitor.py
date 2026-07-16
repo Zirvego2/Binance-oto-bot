@@ -481,6 +481,15 @@ async def _record_closed_position(
             position.symbol,
         )
         await session.flush()
+        await _send_close_telegram(
+            session,
+            position,
+            exit_price,
+            existing_trade.net_pnl_usdt,
+            existing_trade.net_roi_pct,
+            close_reason,
+            now,
+        )
         return
 
     trade = Trade(
