@@ -282,8 +282,11 @@ async def deliver_position_opened_notification(
     from .telegram_notifier import format_position_opened_message
 
     symbol = fields.get("symbol")
+    position_id = fields.pop("position_id", None)
     text = format_position_opened_message(**fields)
     details = {k: str(v) for k, v in fields.items() if v is not None}
+    if position_id is not None:
+        details["position_id"] = str(position_id)
     status, _, _ = await deliver_telegram_message(
         session,
         settings,
@@ -308,12 +311,15 @@ async def deliver_position_closed_notification(
     from .telegram_notifier import format_position_closed_message
 
     symbol = fields.get("symbol")
+    position_id = fields.pop("position_id", None)
     text = format_position_closed_message(**fields)
     details = {
         k: (v.isoformat() if hasattr(v, "isoformat") else str(v))
         for k, v in fields.items()
         if v is not None
     }
+    if position_id is not None:
+        details["position_id"] = str(position_id)
     status, _, _ = await deliver_telegram_message(
         session,
         settings,

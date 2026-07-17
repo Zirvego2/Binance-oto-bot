@@ -2,8 +2,23 @@
 
 from datetime import datetime, timezone
 
+from shared import telegram_delivery as td
 from shared.db import TelegramDeliveryLog
 from shared.telegram_delivery import _is_duplicate_delivery
+
+
+class _FakeSession:
+    """format_*_message fonksiyonlarina position_id sizmasini test etmek icin
+    gercek DB gerektirmeyen minimal sahte oturum."""
+
+    def __init__(self) -> None:
+        self.added: list[TelegramDeliveryLog] = []
+
+    def add(self, obj: TelegramDeliveryLog) -> None:
+        self.added.append(obj)
+
+    async def flush(self) -> None:
+        pass
 
 
 def _log(message_type: str, symbol: str, *, position_id: str | None = None) -> TelegramDeliveryLog:
@@ -57,3 +72,56 @@ def test_test_messages_not_deduplicated():
         symbol="BTCUSDT",
         details=None,
     )
+
+
+async def test_deliver_position_opened_notification_does_not_leak_position_id_to_formatter(monkeypatch):
+    """Regresyon: position_id, format_position_opened_message'a TypeError firlatmadan iletilmemeli."""
+
+    async def _fake_resolve(*_args, **_kwargs):
+        return None, td.SKIP_NO_CONFIG
+
+    monkeypatch.setattr(td, "_resolve_customer_config", _fake_resolve)
+
+    session = _FakeSession()
+    status = await td.deliver_position_opened_notification(
+        session,
+        settings=object(),
+        admin_id="admin-1",
+        symbol="BTCUSDT",
+        side="LONG",
+        entry_price=100,
+        quantity=1,
+        margin_usdt=10,
+        leverage=5,
+        bot_mode="live",
+        position_id="pos-123",
+    )
+    assert status == td.STATUS_SKIPPED
+    assert session.added[0].details.get("position_id") == "pos-123"
+
+
+async def test_deliver_position_closed_notification_does_not_leak_position_id_to_formatter(monkeypatch):
+    """Regresyon: position_id, format_position_closed_message'a TypeError firlatmadan iletilmemeli."""
+
+    async def _fake_resolve(*_args, **_kwargs):
+        return None, td.SKIP_NO_CONFIG
+
+    monkeypatch.setattr(td, "_resolve_customer_config", _fake_resolve)
+
+    session = _FakeSession()
+    status = await td.deliver_position_closed_notification(
+        session,
+        settings=object(),
+        admin_id="admin-1",
+        symbol="BTCUSDT",
+        side="LONG",
+        entry_price=100,
+        exit_price=110,
+        net_pnl_usdt=10,
+        net_roi_pct=10,
+        close_reason="TAKE_PROFIT",
+        bot_mode="live",
+        position_id="pos-123",
+    )
+    assert status == td.STATUS_SKIPPED
+    assert session.added[0].details.get("position_id") == "pos-123"
